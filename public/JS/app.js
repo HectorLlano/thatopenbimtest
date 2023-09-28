@@ -36,11 +36,11 @@ components.camera.controls.setLookAt(10, 10, 10, 0, 0, 0);
 
 // creamos una geometría simple usando three.js
 
-  const boxMaterial = new THREE.MeshStandardMaterial({ color: '#6528D7' });
-  const boxGeometry = new THREE.BoxGeometry(3, 3, 3);
-	const cube = new THREE.Mesh(boxGeometry, boxMaterial);
-	cube.position.set(0, 1.5, 0);
-	scene.add(cube);
+  // const boxMaterial = new THREE.MeshStandardMaterial({ color: '#6528D7' });
+  // const boxGeometry = new THREE.BoxGeometry(3, 3, 3);
+	// const cube = new THREE.Mesh(boxGeometry, boxMaterial);
+	// cube.position.set(0, 1.5, 0);
+	// scene.add(cube);
 
 // y por último iluminamos la escena:
 
@@ -54,3 +54,58 @@ document.body.append(stats.dom);
 stats.dom.style.left = '0px';
 components.renderer.onBeforeUpdate.add(() => stats.begin());
 components.renderer.onAfterUpdate.add(() => stats.end());
+
+// incluimos el ifc loader para cargar archivos ifc
+
+let fragments = new OBC.FragmentManager(components);
+let fragmentIfcLoader = new OBC.FragmentIfcLoader(components, fragments);
+
+// y creamos un boton en la aplicación
+
+const mainToolbar = new OBC.Toolbar(components, { name: 'Main Toolbar', position: 'bottom' });
+components.ui.addToolbar(mainToolbar);
+const ifcButton = fragmentIfcLoader.uiElement.get("main");
+mainToolbar.addChild(ifcButton);
+
+// calibrando el conversor de ifc a fragments
+
+fragmentIfcLoader.settings.wasm = {
+  path: "https://unpkg.com/web-ifc@0.0.43/",
+  absolute: true
+};
+
+// ejemplo de como excluir categorías para no importarlo todo a fragments
+
+const excludedCats = [
+  WEBIFC.IFCTENDONANCHOR,
+  WEBIFC.IFCREINFORCINGBAR,
+  WEBIFC.IFCREINFORCINGELEMENT,
+  WEBIFC.IFCSPACE,
+];
+
+for(const cat of excludedCats) {
+  fragmentIfcLoader.settings.excludedCategories.add(cat);
+}
+
+// enviamos la geometría al origen de coordenadas y optimizamos geometrías
+
+fragmentIfcLoader.settings.webIfc.COORDINATE_TO_ORIGIN = true;
+fragmentIfcLoader.settings.webIfc.OPTIMIZE_PROFILES = true;
+
+// hardcodeamos el ifc de GOYA
+
+// async function loadIfcAsFragments() {
+//   const file = await fetch('/resources/IFC/2301_ES-MAD_GOYA49_ARQ_F0_V00.ifc');
+//   const data = await file.arrayBuffer();
+//   const buffer = new Uint8Array(data);
+//   const model = await fragmentIfcLoader.load(buffer);
+//   scene.add(model);
+// }
+
+// loadIfcAsFragments();
+
+// function disposeFragments() {
+//   fragments.dispose();
+// }
+
+// disposeFragments();
