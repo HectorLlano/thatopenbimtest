@@ -1,6 +1,6 @@
 // import three and openbim-components from a CDN called jsdelivr.net
-import * as OBC from "openbim-components"; // "openbim-components"; "https://cdn.jsdelivr.net/npm/openbim-components@1.1.1/+esm";
-import * as THREE from "three"; // "three"; "https://cdn.jsdelivr.net/npm/three@0.157.0/+esm";
+import * as OBC from "https://cdn.jsdelivr.net/npm/openbim-components@1.1.1/+esm"; // "openbim-components"; "https://cdn.jsdelivr.net/npm/openbim-components@1.1.1/+esm";
+import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.157.0/+esm"; // "three"; "https://cdn.jsdelivr.net/npm/three@0.157.0/+esm";
 
 // create viewer and viewer container, a html div
 const viewer = new OBC.Components();
