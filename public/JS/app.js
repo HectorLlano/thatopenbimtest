@@ -1,111 +1,67 @@
-// importamos Stats, three y openbim-components
+// import three and openbim-components from a CDN called jsdelivr.net
+import * as OBC from "openbim-components"; // "openbim-components"; "https://cdn.jsdelivr.net/npm/openbim-components@1.1.1/+esm";
+import * as THREE from "three"; // "three"; "https://cdn.jsdelivr.net/npm/three@0.157.0/+esm";
 
-import Stats from 'https://unpkg.com/stats-js@1.0.1/src/Stats.js';
-import * as THREE from 'https://unpkg.com/three@0.152.2/build/three.module.js';
-import * as OBC from '/JS/openbim-components.js';
+// create viewer and viewer container, a html div
+const viewer = new OBC.Components();
+const viewerContainer = document.getElementById("app");
 
-// seleccionamos el container dentro del código html
+// create scene component
+const sceneComponent = new OBC.SimpleScene(viewer);
 
-const container = document.getElementById('container');
+// setting up the scene
+viewer.scene = sceneComponent;
 
-// para cada aplicación necesitaremos al menos 4 cosas para hacerlo funcionar: una escena (scene), un renderizador (renderer), una cámara (camera) y un raycaster
-// todo esto lo definimos dentro de un único componente, en este caso llamado components (new OBC.Components())
+// lighting definition and add to the scene
+const ambientLight = new THREE.AmbientLight(0xe6e7e4, 1);
+const directionalLight = new THREE.DirectionalLight(0xf9f9f9, 0.75);
+directionalLight.position.set(10, 50, 10);
 
-const components = new OBC.Components();
-components.scene = new OBC.SimpleScene(components);
-components.renderer = new OBC.SimpleRenderer(components, container);
-components.camera = new OBC.SimpleCamera(components);
-components.raycaster = new OBC.SimpleRaycaster(components);
+const scene = sceneComponent.get();
+scene.add(ambientLight, directionalLight);
+scene.background = new THREE.Color("#FFFFFF");
 
-// una vez configurado todo, simplemente iniciamos la aplicación (método init())
+// setting up the renderer, camera and raycaster
+const rendererComponent = new OBC.PostproductionRenderer(
+  viewer,
+  viewerContainer
+);
+viewer.renderer = rendererComponent;
 
-components.init();
+const cameraComponent = new OBC.OrthoPerspectiveCamera(viewer);
+viewer.camera = cameraComponent;
 
-// referenciamos la escena que está actualmente configurada
+const raycasterComponent = new OBC.SimpleRaycaster(viewer);
+viewer.raycaster = raycasterComponent;
 
-const scene = components.scene.get();
+// init visualizator
+viewer.init();
+rendererComponent.postproduction.enabled = true;
 
-// localizamos la cámara inicial y hacia donde estará mirando:
+// add grid elements
+new OBC.SimpleGrid(viewer, new THREE.Color(0x666666));
 
-components.camera.controls.setLookAt(10, 10, 10, 0, 0, 0);
+// setting up ifcLoader, highlighter and properties processor
+const ifcLoader = new OBC.FragmentIfcLoader(viewer);
+const highlighter = new OBC.FragmentHighlighter(viewer);
+const propertiesProcessor = new OBC.IfcPropertiesProcessor(viewer);
+highlighter.setup();
 
-// añadimos una grid 2D
+// on IFC load, execute propertiesProcessor and wait for highlighter to pass element ID 
+ifcLoader.onIfcLoaded.add(async (model) => {
+  propertiesProcessor.process(model);
+  await highlighter.update();
+  highlighter.events.select.onHighlight.add((selection) => {
+    const fragmentID = Object.keys(selection)[0];
+    const expressID = Number([...selection[fragmentID]][0]);
+    propertiesProcessor.renderProperties(model, expressID);
+  });
+});
 
-	const grid = new OBC.SimpleGrid(components);
-	components.tools.add("grid", grid);
-
-// creamos una geometría simple usando three.js
-
-  // const boxMaterial = new THREE.MeshStandardMaterial({ color: '#6528D7' });
-  // const boxGeometry = new THREE.BoxGeometry(3, 3, 3);
-	// const cube = new THREE.Mesh(boxGeometry, boxMaterial);
-	// cube.position.set(0, 1.5, 0);
-	// scene.add(cube);
-
-// y por último iluminamos la escena:
-
-components.scene.setup();
-
-// creamos un elemento que mide la cantidad de memoria usada usando STATS
-
-const stats = new Stats();
-stats.showPanel(2);
-document.body.append(stats.dom);
-stats.dom.style.left = '0px';
-components.renderer.onBeforeUpdate.add(() => stats.begin());
-components.renderer.onAfterUpdate.add(() => stats.end());
-
-// incluimos el ifc loader para cargar archivos ifc
-
-let fragments = new OBC.FragmentManager(components);
-let fragmentIfcLoader = new OBC.FragmentIfcLoader(components, fragments);
-
-// y creamos un boton en la aplicación
-
-const mainToolbar = new OBC.Toolbar(components, { name: 'Main Toolbar', position: 'bottom' });
-components.ui.addToolbar(mainToolbar);
-const ifcButton = fragmentIfcLoader.uiElement.get("main");
-mainToolbar.addChild(ifcButton);
-
-// calibrando el conversor de ifc a fragments
-
-fragmentIfcLoader.settings.wasm = {
-  path: "https://unpkg.com/web-ifc@0.0.43/",
-  absolute: true
-};
-
-// ejemplo de como excluir categorías para no importarlo todo a fragments
-
-const excludedCats = [
-  WEBIFC.IFCTENDONANCHOR,
-  WEBIFC.IFCREINFORCINGBAR,
-  WEBIFC.IFCREINFORCINGELEMENT,
-  WEBIFC.IFCSPACE,
-];
-
-for(const cat of excludedCats) {
-  fragmentIfcLoader.settings.excludedCategories.add(cat);
-}
-
-// enviamos la geometría al origen de coordenadas y optimizamos geometrías
-
-fragmentIfcLoader.settings.webIfc.COORDINATE_TO_ORIGIN = true;
-fragmentIfcLoader.settings.webIfc.OPTIMIZE_PROFILES = true;
-
-// hardcodeamos el ifc de GOYA
-
-// async function loadIfcAsFragments() {
-//   const file = await fetch('/resources/IFC/2301_ES-MAD_GOYA49_ARQ_F0_V00.ifc');
-//   const data = await file.arrayBuffer();
-//   const buffer = new Uint8Array(data);
-//   const model = await fragmentIfcLoader.load(buffer);
-//   scene.add(model);
-// }
-
-// loadIfcAsFragments();
-
-// function disposeFragments() {
-//   fragments.dispose();
-// }
-
-// disposeFragments();
+// creating main toolbar, adding buttons and displaying toolbar in viewer
+const mainToolbar = new OBC.Toolbar(viewer);
+mainToolbar.addChild(
+  ifcLoader.uiElement.get("main"),
+  propertiesProcessor.uiElement.get("main")
+);
+viewer.ui.addToolbar(mainToolbar);

@@ -13,6 +13,7 @@
   "dependencies": {
     "express": "^4.18.2",
     "openbim-components": "^1.1.0",
+    "three": "^0.157.0",
     "web-ifc": "*"
   }
 }
