@@ -4,7 +4,7 @@ import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.157.0/+esm"; // "th
 
 // create viewer and viewer container, a html div
 const viewer = new OBC.Components();
-const viewerContainer = document.getElementById("app");
+const viewerContainer = document.getElementById("container");
 
 // create scene component
 const sceneComponent = new OBC.SimpleScene(viewer);
@@ -39,7 +39,17 @@ viewer.init();
 rendererComponent.postproduction.enabled = true;
 
 // add grid elements
-new OBC.SimpleGrid(viewer, new THREE.Color(0x666666));
+const grid = new OBC.SimpleGrid(viewer, new THREE.Color(0x666666));
+viewer.tools.add("grid", grid);
+
+const gridMesh = grid.get();
+const effects = viewer.renderer.postproduction.customEffects;
+
+effects.excludedMeshes.push(gridMesh);
+
+// add Axes helpers
+const axesHelper = new THREE.AxesHelper(5);
+scene.add(axesHelper);
 
 // setting up ifcLoader, highlighter and properties processor
 const ifcLoader = new OBC.FragmentIfcLoader(viewer);
@@ -47,7 +57,7 @@ const highlighter = new OBC.FragmentHighlighter(viewer);
 const propertiesProcessor = new OBC.IfcPropertiesProcessor(viewer);
 highlighter.setup();
 
-// on IFC load, execute propertiesProcessor and wait for highlighter to pass element ID 
+// on IFC load, execute propertiesProcessor and wait for highlighter to pass element ID
 ifcLoader.onIfcLoaded.add(async (model) => {
   propertiesProcessor.process(model);
   await highlighter.update();
